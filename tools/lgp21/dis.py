@@ -49,15 +49,15 @@ def explain(word):
             elif track == 2 or track == 3:
                 return 'NOP'
             else:
-                return 'Skip if switches 0x%02x are set' % track
+                return 'Skip if switches 0x%02x are not all set' % track
 
         case insn.OVERFLOW:
             if track == 0 or track == 1:
-                return 'Skip if overflow is set and halt'
+                return 'Skip if no overflow and halt'
             elif track == 2 or track == 3:
-                return 'Skip if overflow is set'
+                return 'Skip if no overflow'
             else:
-                return 'Skip if overflow or switches 0x%02x are set' % track
+                return 'Skip if no overflow or switches 0x%02x are not all set' % track
 
         case insn.BRING:
             return 'Load A from [%02d%02d]' % (track, sector)

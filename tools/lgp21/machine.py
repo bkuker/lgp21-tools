@@ -231,19 +231,17 @@ class Machine:
                 skip = False
                 if track == 0 or track == 1:
                     # -Z0000 or -Z0100 halt the machine and optionally skip.
-                    if self.overflow:
-                        self.overflow = False
+                    if not self.overflow:
                         skip = True
                     self.halted = True
                 elif track == 2 or track == 3:
                     # -Z0200 or -Z0300 skip based on overflow only.
-                    if self.overflow:
-                        self.overflow = False
+                    if not self.overflow:
                         skip = True
-                elif self.overflow or (track & self.BS) != track:
+                elif (not self.overflow) or (track & self.BS) != track:
                     # Skip based on overflow or the branch switches.
-                    self.overflow = False
                     skip = True
+                self.overflow = False
                 if skip:
                     self.C = (self.C + 1) & 4095
 
