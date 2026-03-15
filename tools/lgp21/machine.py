@@ -19,7 +19,11 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import termios
+import tty
+import sys
 import lgp21.charset as charset
+import lgp21.hexadecimal as hexadecimal
 import lgp21.insn as insn
 
 # Contents of the Program Input Routine #2 tape.
@@ -136,6 +140,12 @@ class Machine:
         self.TC = False # State of the TC switch on the console.
         self.BS = 0     # State of the branch switches on the console.
         self.tape = []
+        self.tape_posn = 0
+        self.print_upper = False
+        self.input_upper = False
+        self.input_buffer = -1
+        self.input_init = None
+        self.loading_bootstrap = False
 
     '''
     Bootstraps the machine and loads the program input routine
@@ -154,9 +164,14 @@ class Machine:
         self.C = 2                  # Set the initial program counter to 2.
         self.overflow = False       # Clear the overflow bit.
         self.halted = False         # Take the machine out of the halt state.
+        self.print_upper = False    # Reset the state of the typewriter.
+        self.input_upper = False
+        self.input_buffer = -1
+        self.loading_bootstrap = True
 
         # Load the program input routine up on the tape reader.
         self.tape = charset.io_ascii_to_6bit(Program_Input_Routine)
+        self.tape_posn = 0
 
     '''
     Halt the machine.
@@ -194,9 +209,16 @@ class Machine:
             case insn.STOP:
                 # Z: Conditional stop of the machine.
                 if track == 0 or track == 1:
-                    # Z0000 or Z0100 halt the machine.
-                    self.halted = True
-                elif track == 2 or track == 0x00C03:
+                    # Z0000 or Z0100 halt the machine.  If we were
+                    # bootstrapping the system, switch to running the
+                    # Program Input Routine that is now in memory.
+                    if self.loading_bootstrap:
+                        self.loading_bootstrap = False
+                        self.A = 0
+                        self.C = 0
+                    else:
+                        self.halted = True
+                elif track == 2 or track == 3:
                     # Z0200 or Z0300 are no-op instructions.
                     pass
                 elif (track & self.BS) != track:
@@ -224,54 +246,65 @@ class Machine:
                 if skip:
                     self.C = (self.C + 1) & 4095
 
-            case insn.BRING:
+            case insn.BRING | insn.BRINGM:
                 # B: Bring a value into the accumulator from memory.
                 self.A = self.memory[address]
 
-            case insn.STORE:
+            case insn.STORE | insn.STOREM:
                 # Y: Store to the address field only at the destination.
                 temp = self.memory[address] & ~insn.ADDRESS_MASK
                 self.memory[address] = temp | (self.A & insn.ADDRESS_MASK)
 
-            case insn.RETURN:
+            case insn.RETURN | insn.RETURNM:
                 # T: Store the return address at the destination.
                 temp = self.memory[address] & ~insn.ADDRESS_MASK
                 temp2 = ((self.C + 1) & 4095) << insn.ADDRESS_SHIFT
                 self.memory[address] = temp | temp2
 
             case insn.INPUT6:
-                # TODO
-                pass
+                # I: Shift accumulator right 6 bits and input characters.
+                if address == 0xF80:
+                    # Instruction is "I6200", which indicates a 6-bit
+                    # shift without any input.
+                    self.A = (self.A << 6) & 0xFFFFFFFE
+                else:
+                    self._input(track, 6)
 
             case insn.INPUT4:
-                # TODO
-                pass
+                # I: Shift accumulator right 4 bits and input characters.
+                if address == 0xF80:
+                    # Instruction is "-I6200", which indicates a 4-bit
+                    # shift without any input.
+                    self.A = (self.A << 4) & 0xFFFFFFFE
+                else:
+                    self._input(track, 4)
 
-            case insn.DIV:
+            case insn.DIV | insn.DIVM:
                 # D: Divide the value in the accumulator by a value in memory.
                 self.A, overflow = divide(self.A, self.memory[address])
 
-            case insn.MUL_L:
+            case insn.MUL_L | insn.MUL_LM:
                 # N: Multiply memory with accumulator, return low word.
                 self.A = multiply(self.A, self.memory[address], False)
 
-            case insn.MUL_H:
+            case insn.MUL_H | insn.MUL_HM:
                 # M: Multiply memory with accumulator, return high word.
                 self.A = multiply(self.A, self.memory[address], True)
 
             case insn.PRINT6:
-                # TODO
-                pass
+                # P: Print the 6-bit character at the top of the accumulator.
+                self._print(track, (self.A >> 26) & 0x3F)
 
             case insn.PRINT4:
-                # TODO
-                pass
+                # P: Print the 4-bit character at the top of the accumulator
+                # after converting it into a 6-bit character.
+                self._print(track, ((self.A >> 26) & 0x3C) | 0x02)
 
-            case insn.EXTRACT:
+            case insn.EXTRACT | insn.EXTRACTM:
                 # E: Extract bits / bitwise AND.
                 self.A = self.A & self.memory[address]
 
-            case insn.UNCOND:
+            case insn.UNCOND | insn.UNCONDM:
                 # U: Unconditional branch.
                 self.C = address
 
@@ -286,27 +319,23 @@ class Machine:
                 if (self.A & 0x80000000) != 0 or self.TC:
                     self.C = address
 
-            case insn.HOLD:
+            case insn.HOLD | insn.HOLDM:
                 # H: Hold / store the accumulator to memory.
                 # Memory is 31-bit not 32-bit, so drop the LSB.
                 self.memory[address] = self.A & 0xFFFFFFFE
 
-            case insn.CLEAR:
+            case insn.CLEAR | insn.CLEARM:
                 # C: Store the accumulator to memory and then clear.
                 self.memory[address] = self.A & 0xFFFFFFFE
                 self.A = 0
 
-            case insn.ADD:
+            case insn.ADD | insn.ADDM:
                 # A: Add the contents of memory to the accumulator.
                 self.A, overflow = from_signed(to_signed(self.A) + to_signed(self.memory[address]))
 
-            case insn.SUB:
+            case insn.SUB | insn.SUBM:
                 # S: Subtract the contents of memory from the accumulator.
                 self.A, overflow = from_signed(to_signed(self.A) - to_signed(self.memory[address]))
-
-            case _:
-                # Unknown instruction.  Treat it as a no-op for now.
-                pass
 
     '''
     Run the machine continuously until it halts.  Does nothing if the
@@ -315,3 +344,105 @@ class Machine:
     def run(self):
         while not self.halted:
             self.step()
+
+    '''
+    Dump the contents of memory.
+    '''
+    def dump_memory(self):
+        for address in range(0, len(self.memory)):
+            word = self.memory[address]
+            inst = hexadecimal.to_hex(word, min_digits=1, order_codes=True)
+            print("%02d%02d  %8s'\r\n" % (address / 64, address % 64, inst), end='')
+
+    '''
+    Internal handling for input instructions.
+    '''
+    def _input(self, device, bits):
+        # Keep reading characters until we see a conditional stop.
+        ch = self._input_char(device)
+        while ch != 0x20:
+            if ch != 0 and ch != 0x10: # Ignore Tape Feed and Carriage Return.
+                if bits == 4:
+                    ch >>= 2
+                    self.A = (self.A << 4) | ch
+                else:
+                    self.A = (self.A << 6) | ch
+            ch = self._input_char(device)
+
+    '''
+    Input a single character.
+    '''
+    def _input_char(self, device):
+        if device == 0:
+            # Read from the tape reader.
+            if self.tape_posn < len(self.tape):
+                ch = self.tape[self.tape_posn]
+                self.tape_posn += 1
+                return ch
+            else:
+                # Tape is exhausted, end with a conditional stop.
+                return 0x20
+        elif device == 2:
+            # Read from the typewriter.
+            if self.input_buffer != -1:
+                # Buffered character from last time.
+                ch = self.input_buffer
+                self.input_buffer = -1
+                return ch
+            if self.input_init == None:
+                self.input_init = tty.tcgetattr(0)
+                tty.setcbreak(0)
+            data = sys.stdin.read(1)
+            if data == chr(27):
+                # ESC dumps the contents of memory.
+                self.dump_memory()
+            elif len(data) > 0:
+                print(data, end='', flush=True) # Echo the typewriter input.
+                codes = charset.io_ascii_to_6bit(data, upper=self.input_upper, as_list=True)
+                if len(codes) > 1 and codes[0] == 0x04:
+                    # Shift to lower case.
+                    self.input_upper = False
+                    self.input_buffer = codes[1]
+                    return codes[0]
+                elif len(codes) > 1 and codes[0] == 0x08:
+                    # Shift to upper case.
+                    self.input_upper = True
+                    self.input_buffer = codes[1]
+                    return codes[0]
+                elif len(codes) > 0:
+                    return codes[0]
+            return 0 # Return "Tape Feed" if the character cannot be mapped.
+        else:
+            # Unknown device: return a conditional stop.
+            return 0x20
+
+    '''
+    Internal routine to print a single charater to a device.
+    '''
+    def _print(self, device, ch):
+        if device == 2:
+            # Print to the typewriter.
+            if ch == 0x04:
+                # Shift to lower case.
+                self.print_upper = False
+            elif ch == 0x08:
+                # Shift to upper case.
+                self.print_upper = True
+            elif ch == 0x10:
+                # Carriage return.
+                print("", flush=True)
+            else:
+                # Some other character.
+                print(charset.io_6bit_to_ascii(ch, upper=self.print_upper), end='', flush=True)
+        elif device == 6:
+            # Print to the tape punch.
+            # TODO
+            pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.input_init != None:
+            termios.tcsetattr(0, termios.TCSAFLUSH, self.input_init)
+            self.input_init = None

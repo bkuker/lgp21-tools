@@ -38,10 +38,10 @@ def to_hex(v, min_digits=8, order_codes=False):
     while v != 0:
         if digit_count == 4 and order_codes:
             # Use the instruction order code in this column.
-            result += order_chars[v % 16]
+            result += order_chars[int(v % 16)]
         else:
-            result += hex_chars[v % 16]
-        v /= 16
+            result += hex_chars[int(v % 16)]
+        v = int(v / 16)
         min_digits -= 1
         digit_count += 1
     while min_digits > 0:

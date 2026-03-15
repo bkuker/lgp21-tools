@@ -57,6 +57,29 @@ Bitsavers has a collection of .ptp tape images in
 [this directory](https://bitsavers.org/pdf/generalPrecision/LGP-21/paper_tapes/)
 that can be used for testing.
 
+## Running the emulator
+
+A mini emulator written in Python is included.  No attempt has been made to
+run this at the actual speed of the LGP-21.  It runs as fast as your host
+machine can run.
+
+    tools/lgp21-run
+
+The emulator boostraps "Program Input Routine #2" into memory which is the
+closest the LGP-21 has to an operating system from what I can tell.
+
+After loading the "OS", the emulator will sit at the prompt waiting for a
+command.  Characters can be typed in to effect commands.  But I currently
+don't know what the commands are!  The LGP-21 uses the single-quote (')
+character as a terminator but that's all I know.
+
+Hit the ESC key to dump the entire contents of memory to stdout.  Press
+CTRL-C to abort the emulator.
+
+The emulator makes use of the Python tty and termios modules, which only
+work on Unix/Linux systems.  Patches to make it work under non-POSIX
+systems welcome.
+
 ## License
 
 Distributed under the terms of the MIT license.

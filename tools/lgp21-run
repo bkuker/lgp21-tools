@@ -7,6 +7,6 @@
 import sys
 import lgp21.machine as machine
 
-mach = machine.Machine()
-mach.bootstrap()
-mach.run()
+with machine.Machine() as mach:
+    mach.bootstrap()
+    mach.run()
