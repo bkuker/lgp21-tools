@@ -123,11 +123,11 @@ def divide(x, y):
         sign = True
     else:
         sign = False
-    if y == 0:
+    if yval == 0:
         # Division by zero produces an all-1's value and overflow.
         # Is this correct?  Should the machine catch on fire instead?
         return (0xFFFFFFFF, True)
-    result = int((x << 32) / y) + 1
+    result = int((xval << 32) / yval) + 1
     result = result >> 1 # Account for the extra rounding bit.
     if sign:
         result = -result

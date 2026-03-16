@@ -42,6 +42,9 @@ def check_mul(x, y, expected_high, expected_low):
     check((machine.multiply(signed_to_unsigned(x), signed_to_unsigned(y), True), False), expected_high_value, False)
     check((machine.multiply(signed_to_unsigned(x), signed_to_unsigned(y), False), False), expected_low_value, False)
 
+def check_div(x, y, expected_value, expected_overflow=False):
+    check(machine.divide(signed_to_unsigned(x), signed_to_unsigned(y)), signed_to_unsigned(expected_value), expected_overflow)
+
 check_add(1, 1, 2)      # 1 + 1 = 2
 check_add(1, -2, -1)    # 1 + -2 = -1
 check_add(-13, 27, 14)  # -13 + 27 = 14
@@ -122,3 +125,44 @@ check_mul(0x00000002, 0x00000001, 0x00000000, 0x00000002)
 check_mul(0x00000001, 0x00000001, 0x00000000, 0x00000000)
 check_mul(-0x80000000, 0x40000000, 0xC0000000, 0) # -1 * 0.5 = -0.5
 check_mul(-0x80000000, -0x80000000, 0x80000000, 0) # -1 * -1 = -1 (!!)
+
+# Division interprets words as fractions -1.0 <= x < 1.0.
+check_div(0x40000000, 0x40000000, -0x80000000, True) # 0.5 / 0.5 = -1 with overflow
+check_div(0x20000000, 0x40000000, 0x40000000) # 0.25 / 0.5 = 0.5
+check_div(0x10000000, 0x20000000, 0x40000000) # 0.125 / 0.25 = 0.5
+check_div(0x10000000, 0x40000000, 0x20000000) # 0.125 / 0.5 = 0.25
+check_div(0x08000000, 0x40000000, 0x10000000) # 0.0625 / 0.5 = 0.125
+check_div(0x04000000, 0x40000000, 0x08000000) # Keep going down
+check_div(0x02000000, 0x40000000, 0x04000000)
+check_div(0x01000000, 0x40000000, 0x02000000)
+check_div(0x00800000, 0x40000000, 0x01000000)
+check_div(0x00400000, 0x40000000, 0x00800000)
+check_div(0x00200000, 0x40000000, 0x00400000)
+check_div(0x00100000, 0x40000000, 0x00200000)
+check_div(0x00080000, 0x40000000, 0x00100000)
+check_div(0x00040000, 0x40000000, 0x00080000)
+check_div(0x00020000, 0x40000000, 0x00040000)
+check_div(0x00010000, 0x40000000, 0x00020000)
+check_div(0x00008000, 0x40000000, 0x00010000)
+check_div(0x00004000, 0x40000000, 0x00008000)
+check_div(0x00002000, 0x40000000, 0x00004000)
+check_div(0x00001000, 0x40000000, 0x00002000)
+check_div(0x00000800, 0x40000000, 0x00001000)
+check_div(0x00000400, 0x40000000, 0x00000800)
+check_div(0x00000200, 0x40000000, 0x00000400)
+check_div(0x00000100, 0x40000000, 0x00000200)
+check_div(0x00000080, 0x40000000, 0x00000100)
+check_div(0x00000040, 0x40000000, 0x00000080)
+check_div(0x00000020, 0x40000000, 0x00000040)
+check_div(0x00000010, 0x40000000, 0x00000020)
+check_div(0x00000008, 0x40000000, 0x00000010)
+check_div(0x00000004, 0x40000000, 0x00000008)
+check_div(0x00000002, 0x40000000, 0x00000004)
+check_div(0x00000001, 0x40000000, 0x00000002)
+check_div(0x00000000, 0x40000000, 0x00000000)
+check_div(0x00000000, 0x40000000, 0x00000000) # 0.5 / 0 = overflow
+check_div(0x40000000, -0x80000000, -0x40000000) # 0.5 / -1 = -0.5
+check_div(-0x80000000, -0x80000000, -0x80000000, True) # -1 / -1 = -1 with overflow
+check_div(-0x40000000, 0x40000000, -0x80000000) # -0.5 / 0.5 = 1
+check_div(0x2AAAAAAA, 0x40000000, 0x55555554) # 0.333333 / 0.5 ~= 0.666666
+check_div(-0x00000100, 0x40000000, -0x00000200)
