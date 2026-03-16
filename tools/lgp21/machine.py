@@ -1,4 +1,3 @@
-
 # Copyright (C) 2026 Rhys Weatherley
 #
 # Permission is hereby granted, free of charge, to any person obtaining a
@@ -19,9 +18,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
-import termios
-import tty
-import sys
+import readchar
 import lgp21.charset as charset
 import lgp21.dis as dis
 import lgp21.hexadecimal as hexadecimal
@@ -153,7 +150,6 @@ class Machine:
         self.print_upper = False
         self.input_upper = False
         self.input_buffer = -1
-        self.input_init = None
         self.loading_bootstrap = False
         self.verbose = False
 
@@ -410,15 +406,16 @@ class Machine:
                 ch = self.input_buffer
                 self.input_buffer = -1
                 return ch
-            if self.input_init == None:
-                self.input_init = tty.tcgetattr(0)
-                tty.setcbreak(0)
-            data = sys.stdin.read(1)
-            if data == chr(27):
+
+            data = readchar.readchar()
+
+            if data == readchar.key.CTRL_C:
+                raise KeyboardInterrupt
+            elif data == readchar.key.ESC:
                 # ESC dumps the contents of memory.
                 self.dump_memory()
-            elif len(data) > 0:
-                print(data, end='', flush=True) # Echo the typewriter input.
+            elif data:
+                print(data, end='\n' if data == '\r' else '', flush=True) # Echo the typewriter input.
                 codes = charset.io_ascii_to_6bit(data, upper=self.input_upper, as_list=True)
                 if len(codes) > 1 and codes[0] == 0x04:
                     # Shift to lower case.
@@ -464,6 +461,4 @@ class Machine:
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if self.input_init != None:
-            termios.tcsetattr(0, termios.TCSAFLUSH, self.input_init)
-            self.input_init = None
+        pass  # readchar manages terminal state internally; nothing to restore.
