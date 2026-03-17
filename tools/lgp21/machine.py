@@ -365,8 +365,9 @@ class Machine:
         print("Addr      Word   Hex Word   Instruction Details")
         for address in range(0, len(self.memory)):
             word = self.memory[address]
-            inst = hexadecimal.to_hex(word, min_digits=1, order_codes=True)
-            print("%02d%02d  %8s'  %s" % (address / 64, address % 64, inst, dis.disassemble(word)))
+            if word:
+                inst = hexadecimal.to_hex(word, min_digits=1, order_codes=True)
+                print("%02d%02d  %8s'  %s" % (address / 64, address % 64, inst, dis.disassemble(word)))
 
     '''
     Internal handling for input instructions.
