@@ -5,6 +5,13 @@ This repository contains a set of tools in Python to help with
 programming the LGP-21 computer.  It is based on the information
 at [bitsavers](https://bitsavers.org/pdf/generalPrecision/LGP-21/).
 
+## Dependencies
+
+The Python tools use the "readchar" module to manage keyboard input,
+so it is necessary to install that:
+
+    pip install readchar
+
 ## A note on hexadecimal
 
 The LGP-21 uses 0 to 9, f, g, j, k, q, and w as hexadecimal digits in
