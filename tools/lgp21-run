@@ -11,6 +11,7 @@ with machine.Machine() as mach:
     if len(sys.argv) > 1 and sys.argv[1] == "-v":
         mach.verbose = True
     mach.bootstrap()
+    mach.BS = 32 # Auto-run when a "." command is seen.
     while True:
         # Run the machine until it halts.
         mach.run()
