@@ -19,6 +19,7 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 
+import os
 import re
 import sys
 import lgp21.charset as charset
@@ -193,6 +194,12 @@ def assemble_directive(code, location, line):
             # Start emitting code.
             code.emit = True
 
+        case '.include':
+            # Include another file at this location.
+            current_filename = code.filename
+            assemble_input(code, os.path.join(os.path.dirname(current_filename), args))
+            code.filename = current_filename
+
         case _:
             code.error(location, "unknown directive `%s'" % name)
 
@@ -359,6 +366,7 @@ Process an input assembly source code file.
 '''
 def assemble_input(code, filename):
     try:
+        code.filename = filename
         with open(filename, 'r') as file:
             line_number = 0
             for line in file:

@@ -170,6 +170,10 @@ string, and the shift to lower case at the end of the string.
 emit them into the final tape image.  This can be used to reserve space
 for variables.  `.emit` returns to normal operation.
 
+`.include FILENAME` includes another source file at this location in the
+parent.  The `FILENAME` is interpreted relative to the including file.
+Does not check for recursive includes; it keeps including forever.
+
 ## Instructions
 
 Instruction names may be in either upper or lower case.  Instruction
