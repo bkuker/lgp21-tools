@@ -501,6 +501,15 @@ class Machine:
             elif ch == 0x10:
                 # Carriage return.
                 print("", flush=True)
+            elif ch == 0x12 and self.print_upper:
+                # Delta character.
+                print('\u0394', end='')
+            elif ch == 0x1E and self.print_upper:
+                # Pi character.
+                print('\u03C0', end='')
+            elif ch == 0x22 and self.print_upper:
+                # Sigma character.
+                print('\u03A3', end='')
             else:
                 # Some other character.
                 print(charset.io_6bit_to_ascii(ch, upper=self.print_upper), end='', flush=True)
