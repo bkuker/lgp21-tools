@@ -456,7 +456,9 @@ class Machine:
         for c in range(0, len(self.itime)):
             if ( self.itime[c] ):
                 if ( c > 640 ):
-                    print("\t%02d%02d\t%d\t%d\t%d\t%s" % (c / 64, c % 64, self.icount[c], self.itime[c], self.itime[c]/self.icount[c], dis.disassemble(self.memory[c])))
+                    operand, opt = timing.get_optimal_addresses(c, self.memory[c])
+                    isOpt = '✔' if operand in opt else ' '
+                    print("\t%02d%02d\t%d\t%d\t%d\t%s\t%s" % (c / 64, c % 64, self.icount[c], self.itime[c], self.itime[c]/self.icount[c], isOpt, dis.disassemble(self.memory[c])))
 
     '''
     Internal handling for input instructions.

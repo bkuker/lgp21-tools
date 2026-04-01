@@ -269,10 +269,10 @@ class CodeGenerator:
                 insn = self.memory[address]
                 time, x = timing.word_times_for_insn(address, address, insn.word)
                 operand, opt = timing.get_optimal_addresses(address, insn.word)
-                isOpt = operand in opt
+                isOpt = '✔' if operand in opt else ' '
                 #print(operand, opt)
-                print("%02d%02d\t%d\t%s\t%s\t%s" %
-                    (address / 64, address % 64, time, dis.disassemble(insn.word).ljust(64), isOpt, insn.location))
+                print("%02d%02d\t%02d%02d\t%s\t%s" %
+                    (address / 64, address % 64, operand / 64, operand % 64, isOpt, insn.location))
                 address += 1
 
 

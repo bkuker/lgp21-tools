@@ -49,7 +49,7 @@ def get_optimal_addresses(pc, word):
         case insn.BRING | insn.BRINGM | insn.STORE | insn.STOREM | insn.RETURN | insn.RETURNM | insn.EXTRACT | insn.EXTRACTM | insn.HOLD | insn.HOLDM | insn.CLEAR | insn.CLEARM | insn.ADD | insn.ADDM | insn.SUB | insn.SUBM:
             last = i + 16
         case insn.INPUT6 | insn.INPUT4:
-            last = i + 16
+            last = i + 128
         case insn.DIV | insn.DIVM:
             last = i + 78
         case insn.MUL_L | insn.MUL_LM:
@@ -57,7 +57,7 @@ def get_optimal_addresses(pc, word):
         case insn.MUL_H | insn.MUL_HM:
             last = i + 79
         case insn.PRINT6 | insn.PRINT4:
-            last = i + 16
+            last = i + 128
         case insn.UNCOND | insn.UNCONDM | insn.COND | insn.CTRL:
             first = i + 4
             last = i + 16
