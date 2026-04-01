@@ -72,6 +72,8 @@ assem.assemble_input(code, args.input_filename)
 if code.errors or not code.resolve():
     sys.exit(1)
 
+code.dump()
+
 # Generate the output tape image.
 if args.bootstrap:
     ba = codegen.dec_to_hex_address(int(args.bootstrap_address))

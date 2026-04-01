@@ -373,7 +373,7 @@ def assemble_input(code, filename):
             line_number = 0
             for line in file:
                 line_number += 1
-                location = filename + ':' + str(line_number)
+                location = filename + ':' + str(line_number) + '\t' + line.rstrip()
                 assemble_line(code, location, line)
     except OSError:
         code.error(filename, 'could not read source file')

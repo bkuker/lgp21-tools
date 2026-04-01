@@ -31,6 +31,43 @@ optimum_address_locator = [
     6, 70, 63, 127, 56, 120, 49, 113, 42, 106, 35, 99, 28, 92, 21, 85, 14, 78, 7, 71
 ]
 
+def get_optimal_addresses(pc, word):
+    pc = pc % 128
+    global optimum_address_locator
+    #Find location of pc in array
+    i = 0
+    while optimum_address_locator[i] != pc:
+        i = (i+1) & 127
+    #add one for fetch
+    first = i + 2
+    #Add execution time
+    addr = (word & insn.ADDRESS_MASK) >> insn.ADDRESS_SHIFT
+    addr &= 127
+    match word & insn.ORDER_MASK:
+        case insn.STOP | insn.OVERFLOW:
+            last = i + 128
+        case insn.BRING | insn.BRINGM | insn.STORE | insn.STOREM | insn.RETURN | insn.RETURNM | insn.EXTRACT | insn.EXTRACTM | insn.HOLD | insn.HOLDM | insn.CLEAR | insn.CLEARM | insn.ADD | insn.ADDM | insn.SUB | insn.SUBM:
+            last = i + 16
+        case insn.INPUT6 | insn.INPUT4:
+            last = i + 16
+        case insn.DIV | insn.DIVM:
+            last = i + 78
+        case insn.MUL_L | insn.MUL_LM:
+            last = i + 81
+        case insn.MUL_H | insn.MUL_HM:
+            last = i + 79
+        case insn.PRINT6 | insn.PRINT4:
+            last = i + 16
+        case insn.UNCOND | insn.UNCONDM | insn.COND | insn.CTRL:
+            first = i + 4
+            last = i + 16
+    opt = []
+    for i in range(first, last):
+        opt.append(optimum_address_locator[i & 127])
+    return (addr, opt)
+
+    
+
 '''
 Get the next rotational disk location after "loc"; e.g. 64 is after 0.
 

@@ -22,6 +22,8 @@
 import sys
 import lgp21.hexadecimal as hexadecimal
 import lgp21.insn as insn
+import lgp21.dis as dis
+import lgp21.timing as timing
 
 '''
 Converts the decimal form of an address to the hexadecimal form.
@@ -250,6 +252,29 @@ class CodeGenerator:
                 self.error(label['location'], "undefined label `%s'" % label['name'])
                 ok = False
         return ok
+
+    def dump(self):
+        # Output each run of contiguous words.
+        address = 0
+        print("Addr\tTime\tWord\t  Disassembly\t\t\t\t\t\t\tLocation\t\t    Input")
+        while address < len(self.memory):
+            # Skip unusued instructions to find the next run.
+            while address < len(self.memory) and not can_emit(self.memory[address]):
+                address += 1
+            if address >= len(self.memory):
+                # No more runs in the program.
+                break
+            # Output the words in the run.
+            while address < len(self.memory) and can_emit(self.memory[address]):
+                insn = self.memory[address]
+                time, x = timing.word_times_for_insn(address, address, insn.word)
+                operand, opt = timing.get_optimal_addresses(address, insn.word)
+                isOpt = operand in opt
+                #print(operand, opt)
+                print("%02d%02d\t%d\t%s\t%s\t%s" %
+                    (address / 64, address % 64, time, dis.disassemble(insn.word).ljust(64), isOpt, insn.location))
+                address += 1
+
 
     '''
     Converts the final program into a tape image in ASCII.

@@ -158,6 +158,8 @@ class Machine:
         self.verbose = False
         self.word_times = 0
         self.disk_loc = 0
+        self.itime = [0] * 4096
+        self.icount = [0] * 4096
 
     '''
     Bootstraps the machine and loads the program input routine
@@ -266,6 +268,8 @@ class Machine:
         inst = self.memory[self.C]
         time, self.disk_loc = timing.word_times_for_insn(self.disk_loc, self.C, inst)
         self.word_times += time
+        self.itime[self.C] += time
+        self.icount[self.C] += 1
         self.C = (self.C + 1) & 4095
 
         # Break the instruction up into its constituent parts.
@@ -447,7 +451,12 @@ class Machine:
     def print_time(self):
         rpm = 1125 # Speed of the disk motor in RPM.
         secs = self.word_times * (60.0 / rpm / 128.0)
-        print("time: %d word times, %.2f seconds" % (self.word_times, secs));
+        print("time: %d word times, %.2f seconds" % (self.word_times, secs))
+        print("\tInst\tCnt\tAcum\tAvg")
+        for c in range(0, len(self.itime)):
+            if ( self.itime[c] ):
+                if ( c > 640 ):
+                    print("\t%02d%02d\t%d\t%d\t%d\t%s" % (c / 64, c % 64, self.icount[c], self.itime[c], self.itime[c]/self.icount[c], dis.disassemble(self.memory[c])))
 
     '''
     Internal handling for input instructions.
