@@ -331,7 +331,7 @@ class CodeGenerator:
     "bootstrap_addr" is the address to write the bootstrap to, usually track 63.
     "device" should be 0 for the tape reader or 2 for the typewriter.
     '''
-    def to_bootstrap_tape(self, bootstrap_addr=63*64, device=2, max_words_per_line=8):
+    def to_bootstrap_tape(self, bootstrap_addr=63*64, device=2, max_words_per_line=8, compact=False):
         # Find the min and max addresses that are occupied by the program.
         min_addr = 0
         max_addr = 4095
@@ -350,7 +350,7 @@ class CodeGenerator:
         #   000c6300'800i0200'
         #   000c6301'000c6303'
         #   000c6302'800i0200'
-        #   000u6300'ready        '
+        #   000u6300'normal        '
         #
         words = [
             0x000D0000 + (bootstrap_addr << insn.ADDRESS_SHIFT),
@@ -369,7 +369,7 @@ class CodeGenerator:
             if word_count >= 2 or word_count >= max_words_per_line:
                 tape += '\n'
                 word_count = 0
-        tape += "ready        '\n\n"
+        tape += "normal        '\n\n"
 
         #
         # Continue building the bootstrap code:
@@ -396,30 +396,38 @@ class CodeGenerator:
             entry_point_word = 0x000A0000 + (address << insn.ADDRESS_SHIFT)
         else:
             entry_point_word = 0
-        words = [
-            0x000D0000 + ((bootstrap_addr + 4) << insn.ADDRESS_SHIFT),
-            0x000A0000 + (bootstrap_addr << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
-            0x80040000 + (device << 8),
-            0x000D0000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
-            0x000D0000 + (min_addr << insn.ADDRESS_SHIFT) + (count << 20),
-            0x000D0000 + ((bootstrap_addr + 7) << insn.ADDRESS_SHIFT),
-            0x00010000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 8) << insn.ADDRESS_SHIFT),
-            0x000F0000 + ((bootstrap_addr + 13) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 9) << insn.ADDRESS_SHIFT),
-            0x000B0000 + ((bootstrap_addr + 12) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 10) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 11) << insn.ADDRESS_SHIFT),
-            0x000A0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
-            0x000D0000 + ((bootstrap_addr + 12) << insn.ADDRESS_SHIFT),
-            entry_point_word,
-            0x000D0000 + ((bootstrap_addr + 13) << insn.ADDRESS_SHIFT),
-            0x000FFFFC,
-            0x000A0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
-            0x00000000
-        ]
+        if compact:
+            # Use the compact form of the bootstrap where the main code
+            # is explicitly written using word pairs.
+            words = [
+                0x000D0000 + ((bootstrap_addr + 4) << insn.ADDRESS_SHIFT),
+                0x000A0000 + (bootstrap_addr << insn.ADDRESS_SHIFT),
+            ]
+        else:
+            words = [
+                0x000D0000 + ((bootstrap_addr + 4) << insn.ADDRESS_SHIFT),
+                0x000A0000 + (bootstrap_addr << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
+                0x80040000 + (device << 8),
+                0x000D0000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
+                0x000D0000 + (min_addr << insn.ADDRESS_SHIFT) + (count << 20),
+                0x000D0000 + ((bootstrap_addr + 7) << insn.ADDRESS_SHIFT),
+                0x00010000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 8) << insn.ADDRESS_SHIFT),
+                0x000F0000 + ((bootstrap_addr + 13) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 9) << insn.ADDRESS_SHIFT),
+                0x000B0000 + ((bootstrap_addr + 12) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 10) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 6) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 11) << insn.ADDRESS_SHIFT),
+                0x000A0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
+                0x000D0000 + ((bootstrap_addr + 12) << insn.ADDRESS_SHIFT),
+                entry_point_word,
+                0x000D0000 + ((bootstrap_addr + 13) << insn.ADDRESS_SHIFT),
+                0x000FFFFC,
+                0x000A0000 + ((bootstrap_addr + 5) << insn.ADDRESS_SHIFT),
+                0x00000000
+            ]
         word_count = 0
         first = True
         for word in words:
@@ -441,6 +449,15 @@ class CodeGenerator:
         # Append the actual words of the program to the tape.
         for address in range(min_addr, max_addr+1):
             inst = self.memory[address]
+            if compact:
+                # Compact form needs a "Cxxxx" instruction to deposit
+                # each word of the program into memory.
+                deposit = 0x000D0000 + (address << insn.ADDRESS_SHIFT)
+                tape += hexadecimal.to_hex(deposit, min_digits=0, order_codes=True) + "'"
+                word_count += 1
+                if word_count >= max_words_per_line:
+                    tape += '\n'
+                    word_count = 0
             if can_emit(inst):
                 word = inst.word
                 if inst.literal:
@@ -454,6 +471,9 @@ class CodeGenerator:
             if word_count >= max_words_per_line:
                 tape += '\n'
                 word_count = 0
+        if compact:
+            # Jump to the program entry point in compact mode.
+            tape += hexadecimal.to_hex(entry_point_word, min_digits=0, order_codes=True) + "''"
         if word_count > 0:
             tape += '\n'
         return tape

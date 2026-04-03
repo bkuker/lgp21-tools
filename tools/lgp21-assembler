@@ -47,6 +47,11 @@ parser.add_argument(
     help='generate bootstrap code to load without PIR'
 )
 parser.add_argument(
+    '-C', '--compact-bootstrap',
+    action='store_true',
+    help='generate compact bootstrap code'
+)
+parser.add_argument(
     '-A', '--bootstrap-address',
     type=str,
     default='6300',
@@ -59,8 +64,8 @@ parser.add_argument(
     help='set the device for the bootstrap, 0 or 2, default is 2'
 )
 args = parser.parse_args()
-if args.bootstrap and args.relocatable:
-    print('Cannot use -B and -r together')
+if (args.bootstrap or args.compact_bootstrap) and args.relocatable:
+    print('Cannot use -r in bootstrap mode')
     sys.exit(1)
 
 # Create a code generator for the output.
@@ -73,9 +78,9 @@ if code.errors or not code.resolve():
     sys.exit(1)
 
 # Generate the output tape image.
-if args.bootstrap:
+if args.bootstrap or args.compact_bootstrap:
     ba = codegen.dec_to_hex_address(int(args.bootstrap_address))
-    tape_ascii = code.to_bootstrap_tape(bootstrap_addr=ba, device=args.bootstrap_device, max_words_per_line=args.words_per_line)
+    tape_ascii = code.to_bootstrap_tape(bootstrap_addr=ba, device=args.bootstrap_device, max_words_per_line=args.words_per_line, compact=args.compact_bootstrap)
 else:
     tape_ascii = code.to_tape(max_words_per_line=args.words_per_line)
 try:
