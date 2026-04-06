@@ -1,8 +1,5 @@
     .org 1000
     .entry start
-
-
-
                             ;Start a new fractal                    
 start:      ld  iLow        ;Reset iPos to iLow
             st  iPos
@@ -79,8 +76,6 @@ iterate:    ld  y           ; yy = y * y
             jnt iterate     ;Left the circle, we are out
             jmp out
 
-
-
 out:        ld  itr
             shl6
             shl6
@@ -94,7 +89,6 @@ in:         ld space
             pr6
             jmp nextChar
 
-                    .org 2000
 .2045:	iPos:	.dw 0
 .2062:	rPos:	.dw 0;
 .2043:	dec:	.dw #2
@@ -112,7 +106,6 @@ in:         ld space
 .2026:	eol:	.dw "\n"
 .2052:	space:	.dw " "
 .2029:	iStep:	.dw 0.1 >> 4
-
 .2136:	iLow:	.dw -1.1 >> 4
 .2031:	rLow:	.dw -2.1 >> 4
 .2033:	max:	.dw #28
