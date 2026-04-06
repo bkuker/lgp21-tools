@@ -104,15 +104,15 @@ in:         ld space
 .2006:	xTemp:	.dw 0
 .2047:	xx:	    .dw 0
 .2018:	yy:	    .dw 0
-.2021:	twoF:	.dw 2.0	>>	4
-.2055:	fourF:	.dw 4.0	>>	4
-.2035:	rStep:	.dw 0.040	>>	4
-.2024:	iHigh:	.dw 1.1	>>	4
-.2030:	rHigh:	.dw 0.52	>>	4
+.2021:	twoF:	.dw 2.0 >> 4
+.2055:	fourF:	.dw 4.0 >> 4
+.2035:	rStep:	.dw 0.040 >> 4
+.2024:	iHigh:	.dw 1.1 >> 4
+.2030:	rHigh:	.dw 0.52 >> 4
 .2026:	eol:	.dw "\n"
 .2052:	space:	.dw " "
-.2029:	iStep:	.dw 0.1	>>	4
+.2029:	iStep:	.dw 0.1 >> 4
 
-.2136:	iLow:	.dw -1.1	>>	4
-.2031:	rLow:	.dw -2.1	>>	4
+.2136:	iLow:	.dw -1.1 >> 4
+.2031:	rLow:	.dw -2.1 >> 4
 .2033:	max:	.dw #28
