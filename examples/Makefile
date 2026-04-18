@@ -21,6 +21,7 @@ OTHER_TAPES = \
 	hellorld_track0.btxt \
 	fibonacci_track0.boot \
 	fibonacci_track0.btxt \
+	erase_disk.btxt \
 
 all: $(TAPES_PTP) $(TAPES_TXT) $(TAPES_BOOT) $(TAPES_BTXT) $(OTHER_TAPES)
 
@@ -56,6 +57,10 @@ fibonacci_track0.boot: fibonacci_track0.asm
 
 fibonacci_track0.btxt: fibonacci_track0.asm
 	$(ASSEM) $(ASSEM_FLAGS) -A 0040 --bootstrap $@ $<
+
+# erase_disk needs the bootstrap placed at the very end of the disk.
+erase_disk.btxt: erase_disk.asm
+	$(ASSEM) $(ASSEM_FLAGS) -A 6359 -D 0 --compact-bootstrap $@ $<
 
 1dlife.ptp: random.asm
 1dlife.txt: random.asm
