@@ -462,6 +462,7 @@ class Machine:
                     self.A = (self.A << 4) | ch
                 else:
                     self.A = (self.A << 6) | ch
+            self.A = self.A & 0xFFFFFFFF
             ch = self._input_char(device)
         if self.verbose:
             # Print a newline in verbose mode after the word is input.
