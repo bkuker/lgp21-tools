@@ -454,20 +454,33 @@ class Machine:
     Internal handling for input instructions.
     '''
     def _input(self, device, bits):
-        # Keep reading characters until we see a conditional stop.
-        ch = self._input_char(device)
+        # Get the next non-ignored char
+        def next_good_char():
+            while True:
+                c = self._input_char(device)
+                if c != 0 and c != 0x10:
+                    return c
+
+        #Input always starts with a shift left
+        self.A = self.A << bits
+
+        #Read and process characters until COND STOP
+        ch = next_good_char()
         while ch != 0x20:
-            if ch != 0 and ch != 0x10: # Ignore Tape Feed and Carriage Return.
-                if bits == 4:
-                    ch >>= 2
-                    self.A = (self.A << 4) | ch
-                else:
-                    self.A = (self.A << 6) | ch
-            self.A = self.A & 0xFFFFFFFF
-            ch = self._input_char(device)
+            #Set low bits of A
+            self.A = self.A | (ch >> 2 if bits == 4 else ch)
+
+            ch = next_good_char()
+            if ch != 0x20:
+                self.A = self.A << bits
+
+        #Remove any superfluous bits on the left
+        self.A = self.A & 0xFFFFFFFF
+
         if self.verbose:
             # Print a newline in verbose mode after the word is input.
             print("")
+
 
     '''
     Input a single character.
