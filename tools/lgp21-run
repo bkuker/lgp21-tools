@@ -5,10 +5,14 @@
 # Usage: lgp21-run [options]
 
 import argparse
+import readchar
+import signal
 import sys
 import lgp21.assem as assem
 import lgp21.charset as charset
 import lgp21.codegen as codegen
+import lgp21.dis as dis
+import lgp21.hexadecimal as hexadecimal
 import lgp21.machine as machine
 
 # Parse the command-line arguments.
@@ -57,7 +61,44 @@ parser.add_argument(
 args = parser.parse_args()
 if args.bootstrap:
     # Direct bootstrap always stops on halt.
-    args.stop_on_halt = True
+    args.stop_on_halt = False
+
+def halt_menu(mach, args):
+    """Present the interactive halt menu. Returns True to resume, False to exit."""
+    if args.stop_on_halt:
+        return False
+    while True:
+        bs = mach.BS
+        print(f"\n    [Halted]")
+        inststr = hexadecimal.to_hex(mach.memory[mach.C], min_digits=1, order_codes=True)
+        print("    A = %08x, overflow = %d" % (mach.A, int(mach.overflow)))
+        print("    C = %02d%02d  %8s'  %s" % (mach.C / 64, mach.C % 64, inststr, dis.disassemble(mach.memory[mach.C])))
+        print(f"    BS-[4] {'ON' if bs & 4  else 'OFF'}  BS-[8] {'ON' if bs & 8  else 'OFF'}  BS-1[6] {'ON' if bs & 16 else 'OFF'}  BS-[3]2 {'ON' if bs & 32 else 'OFF'}  [T]C {'ON' if mach.TC else 'OFF'}")
+        print(f"    [R]esume  [D]ump  [T]oggle TC  E[x]it")
+        if sys.stdin.isatty():
+            choice = readchar.readkey().upper()
+        else:
+            choice = sys.stdin.read(1).upper()
+        if choice == 'R':
+            print()
+            mach.resume()
+            return True
+        elif choice == 'D':
+            mach.dump_memory()
+        elif choice == '4':
+            mach.BS ^= 4
+        elif choice == '8':
+            mach.BS ^= 8
+        elif choice == '6':
+            mach.BS ^= 16
+        elif choice == '3':
+            mach.BS ^= 32
+        elif choice == 'T':
+            mach.TC = not mach.TC
+        elif choice == 'X':
+            return False
+        else:
+            print(f"Unknown command: {choice!r}")
 
 with machine.Machine() as mach:
     if args.verbose:
@@ -86,21 +127,15 @@ with machine.Machine() as mach:
             tape_data = code.to_tape()
             mach.pre_typed_input += charset.io_ascii_to_6bit(tape_data, as_list=True)
     mach.BS = 32 # Auto-run when a "." command is seen.
+
+    signal.signal(signal.SIGINT, lambda sig, frame: setattr(mach, 'halted', True))
+
     try:
         while True:
-            # Run the machine until it halts.
             mach.run()
-            if args.stop_on_halt:
+            if not halt_menu(mach, args):
                 break
-
-            # Reset and jump back into the "Program Input Routine".
-            mach.A = 0
-            mach.C = 0
-            mach.overflow = False
-            mach.resume()
     except KeyboardInterrupt:
-        if args.time:
-            mach.print_time()
-        sys.exit(0)
+        pass
     if args.time:
         mach.print_time()
